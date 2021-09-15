@@ -441,6 +441,7 @@ function addPluginDTS() {
 function toExternalDTS(contents) {
 	let lines = contents.split(/\r\n|\r|\n/);
 	let killNextCloseCurlyBrace = false;
+	let indentUntilMonacoNamespace = false;
 	for (let i = 0; i < lines.length; i++) {
 		let line = lines[i];
 
@@ -460,21 +461,22 @@ function toExternalDTS(contents) {
 			continue;
 		}
 
+		if (indentUntilMonacoNamespace) {
+			lines[i] = '    ' + lines[i];
+		}
+
 		if ('declare namespace monaco {' === line) {
-			lines[i] = '';
+			lines[i] = '}';
+			indentUntilMonacoNamespace = false;
 			killNextCloseCurlyBrace = true;
 			continue;
 		}
 
-		if (line.indexOf('declare namespace monaco.') === 0) {
-			lines[i] = line.replace('declare namespace monaco.', 'export namespace ');
-		}
+		lines[i] = lines[i].replace(/monaco\./g, '')
 
 		if (line.indexOf('declare let MonacoEnvironment') === 0) {
-			lines[i] = `declare global {\n    let MonacoEnvironment: Environment | undefined;\n}`;
-		}
-		if (line.indexOf('    MonacoEnvironment?') === 0) {
-			lines[i] = `    MonacoEnvironment?: Environment | undefined;`;
+			lines[i] = `declare global {\n    let MonacoEnvironment: Environment | undefined;`;
+			indentUntilMonacoNamespace = true;
 		}
 	}
 	return lines.join('\n').replace(/\n\n\n+/g, '\n\n');
